@@ -6,7 +6,7 @@ export const cityData = [
     coordinates: { lng: -116.602, lat: 31.860 }, 
     status: "clean", 
     vibeScore: 9,
-    safety: 90, // Cambiado a número para que tu dashboard no de NaN
+    safety: 90, 
     traffic: 20
   },
   {

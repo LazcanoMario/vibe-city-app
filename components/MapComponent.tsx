@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Map, { Marker, NavigationControl, Source, Layer, ViewStateChangeEvent } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { cityData } from "@/Data/vibes"; 
+// Importamos el cliente de supabase que creaste
+
 import { MapPin, Shield, Waves, Car, X, Navigation, Layers } from "lucide-react"; 
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "../lib/supabase"
+
+
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN as string;
 
@@ -16,17 +20,34 @@ export default function MapComponent() {
     zoom: 12,
   });
 
+  // ESTADOS NUEVOS
+  const [places, setPlaces] = useState<any[]>([]); // Aquí guardaremos lo de Supabase
   const [filter, setFilter] = useState("default");
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [isSatellite, setIsSatellite] = useState(false);
   const [routeData, setRouteData] = useState<any>(null);
 
-  // 1. LÓGICA DE ESTILO DE MAPA
+  // 1. CARGAR DATOS DESDE SUPABASE AL INICIAR
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      const { data, error } = await supabase
+        .from('locations') // Nombre de tu tabla en la imagen
+        .select('*');
+      
+      if (error) {
+        console.error("Error al cargar lugares de Supabase:", error);
+      } else {
+        setPlaces(data || []);
+      }
+    };
+
+    fetchPlaces();
+  }, []);
+
   const currentMapStyle = isSatellite 
     ? "mapbox://styles/mapbox/satellite-streets-v12" 
     : "mapbox://styles/mapbox/dark-v11";
 
-  // 2. FUNCIÓN PARA OBTENER RUTA DESDE MI UBICACIÓN
   const getRoute = async (destLng: number, destLat: number) => {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const start = [pos.coords.longitude, pos.coords.latitude];
@@ -44,7 +65,6 @@ export default function MapComponent() {
           geometry: data,
         });
 
-        // Hacer zoom para que se vea el inicio de la ruta
         setViewState({
           ...viewState,
           longitude: start[0],
@@ -77,7 +97,7 @@ export default function MapComponent() {
 
   const closeDetails = () => {
     setSelectedPlace(null);
-    setRouteData(null); // Limpiamos la ruta al cerrar
+    setRouteData(null);
   };
 
   return (
@@ -130,7 +150,6 @@ export default function MapComponent() {
       >
         <NavigationControl position="bottom-right" />
 
-        {/* CAPA DE LA RUTA (LINEA GEOJSON) */}
         {routeData && (
           <Source id="my-route" type="geojson" data={routeData}>
             <Layer
@@ -147,8 +166,14 @@ export default function MapComponent() {
           </Source>
         )}
 
-        {cityData.map((place) => (
-          <Marker key={place.id} longitude={place.coordinates.lng} latitude={place.coordinates.lat} anchor="bottom">
+        {/* USAMOS 'places' QUE VIENE DE SUPABASE */}
+        {places.map((place) => (
+          <Marker 
+            key={place.id} 
+            longitude={place.lng} // Nombre de columna en Supabase
+            latitude={place.lat}   // Nombre de columna en Supabase
+            anchor="bottom"
+          >
             <div onClick={() => { setSelectedPlace(place); setRouteData(null); }} className="group cursor-pointer flex flex-col items-center">
               <div className="bg-white/90 text-black text-[10px] px-2 py-1 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity mb-1 font-bold whitespace-nowrap">
                 {place.name}
@@ -160,7 +185,6 @@ export default function MapComponent() {
         ))}
       </Map>
 
-      {/* TARJETA DE DETALLES */}
       <AnimatePresence>
         {selectedPlace && (
           <motion.div 
@@ -192,12 +216,12 @@ export default function MapComponent() {
                 </div>
                 <div className="bg-white/5 border border-white/5 p-3 rounded-2xl text-center">
                   <p className="text-[9px] text-slate-500 uppercase font-bold">Vibe</p>
-                  <p className="text-sm font-black text-cyan-400">{selectedPlace.vibeScore}</p>
+                  <p className="text-sm font-black text-cyan-400">{selectedPlace.vibe_score}</p>
                 </div>
               </div>
 
               <button 
-                onClick={() => getRoute(selectedPlace.coordinates.lng, selectedPlace.coordinates.lat)}
+                onClick={() => getRoute(selectedPlace.lng, selectedPlace.lat)}
                 className="w-full mt-6 bg-white text-black font-black py-4 rounded-2xl hover:bg-cyan-400 transition-all uppercase text-[10px] tracking-widest active:scale-95"
               >
                 Planear ruta ahora
