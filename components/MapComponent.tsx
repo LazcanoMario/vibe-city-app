@@ -33,7 +33,7 @@ export default function MapComponent() {
     fetchPlaces();
   }, []);
 
-  // 2. OBTENER CLIMA (CON CORRECCIÓN DE SEGURIDAD)
+  // 2. OBTENER CLIMA
   useEffect(() => {
     const fetchWeather = async () => {
       if (!selectedPlace) {
@@ -45,7 +45,6 @@ export default function MapComponent() {
           `https://api.openweathermap.org/data/2.5/weather?lat=${selectedPlace.lat}&lon=${selectedPlace.lng}&appid=${WEATHER_KEY}&units=metric&lang=es`
         );
         const data = await res.json();
-        // Solo guardamos si la respuesta es exitosa (cod 200)
         if (data.cod === 200) {
           setWeather(data);
         } else {
@@ -58,6 +57,18 @@ export default function MapComponent() {
     };
     fetchWeather();
   }, [selectedPlace]);
+
+  // --- FUNCIÓN RECUPERADA: IR A MI UBICACIÓN ---
+  const goToMyLocation = () => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setViewState({
+        ...viewState,
+        longitude: pos.coords.longitude,
+        latitude: pos.coords.latitude,
+        zoom: 14,
+      });
+    }, () => alert("Por favor activa el GPS en tu navegador"));
+  };
 
   const currentMapStyle = isSatellite 
     ? "mapbox://styles/mapbox/satellite-streets-v12" 
@@ -93,7 +104,20 @@ export default function MapComponent() {
       
       {/* BOTONES LATERALES */}
       <div className="absolute top-24 left-6 z-20 flex flex-col gap-3">
-        <button onClick={() => setIsSatellite(!isSatellite)} className={`p-4 rounded-2xl backdrop-blur-xl border-2 transition-all shadow-2xl ${isSatellite ? "border-yellow-500 bg-yellow-500/20 text-yellow-400" : "bg-black/40 border-white/10 text-white"}`}>
+        
+        {/* BOTÓN RECUPERADO: UBICACIÓN ACTUAL */}
+        <button
+          onClick={goToMyLocation}
+          className="p-4 rounded-2xl backdrop-blur-xl bg-cyan-500/20 border-2 border-cyan-500/50 shadow-2xl hover:scale-110 transition-all mb-2 text-cyan-400 group"
+          title="Mi ubicación"
+        >
+          <Navigation className="group-hover:rotate-45 transition-transform" size={20} />
+        </button>
+
+        <button 
+          onClick={() => setIsSatellite(!isSatellite)} 
+          className={`p-4 rounded-2xl backdrop-blur-xl border-2 transition-all shadow-2xl ${isSatellite ? "border-yellow-500 bg-yellow-500/20 text-yellow-400" : "bg-black/40 border-white/10 text-white"}`}
+        >
           <Layers size={20} />
         </button>
 
@@ -159,6 +183,7 @@ export default function MapComponent() {
         ))}
       </Map>
 
+      {/* ... (Sección de AnimatePresence se mantiene igual que en tu código original) */}
       <AnimatePresence>
         {selectedPlace && (
           <motion.div initial={{ y: 100, opacity: 0, x: "-50%" }} animate={{ y: 0, opacity: 1, x: "-50%" }} exit={{ y: 100, opacity: 0, x: "-50%" }} className="absolute bottom-10 left-1/2 z-30 w-[90%] max-w-[360px]">
@@ -170,14 +195,9 @@ export default function MapComponent() {
                 {selectedPlace.type === 'beach' ? '🏖️ Zona Costera' : '🍸 Punto de Interés'}
               </p>
 
-              {/* SECCIÓN DE CLIMA CORREGIDA */}
               {weather && weather.weather && weather.weather[0] ? (
                 <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 mb-4">
-                  <img 
-                    src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`} 
-                    alt="icono clima" 
-                    className="w-12 h-12" 
-                  />
+                  <img src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`} alt="icono clima" className="w-12 h-12" />
                   <div>
                     <p className="text-2xl font-black">{Math.round(weather.main?.temp)}°C</p>
                     <p className="text-[10px] text-slate-400 uppercase font-bold">{weather.weather[0].description}</p>
